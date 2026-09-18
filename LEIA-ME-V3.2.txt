@@ -1,0 +1,17 @@
+PRODUTOS GILÇANA CLIENTE — V3.2
+
+Correções desta versão:
+- envio de mensagens do chat corrigido e incorporado ao SQL final;
+- datas padrão limitadas no servidor a segunda, quarta e sexta;
+- datas alternativas continuam possíveis somente por exceção cadastrada pelo gerente;
+- pedidos com status enviado/recebido definidos como fila de aguardando confirmação;
+- erro do chat agora mostra a mensagem real do Supabase para diagnóstico;
+- mantém zoom bloqueado e barra de mensagem fixa.
+
+INSTALAÇÃO
+1. No projeto Supabase kpzcvreqjkgevzmlipjs, execute sql/FINALIZAR_APP_CLIENTE_V3.sql.
+2. Depois publique os arquivos desta pasta no Netlify.
+3. Teste chat, datas de entrega e um novo pedido.
+
+PAINEL GERENTE
+A base agora deixa preparada a fila de pedidos aguardando confirmação. A interface administrativa para editar produtos/imagens, dias/cortes e exceções será o próximo app separado, com acesso administrativo próprio.

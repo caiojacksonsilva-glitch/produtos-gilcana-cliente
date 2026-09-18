@@ -1,0 +1,7 @@
+PRODUTOS GILÇANA CLIENTE — V3.1
+
+1. Este pacote é atualização da V2 já configurada no Supabase.
+2. No Supabase SQL Editor, execute sql/FINALIZAR_APP_CLIENTE_V3.sql.
+3. O SQL não recria clientes nem substitui a função ativar_aparelho que já está funcionando.
+4. Se aparecer BASE_V2_AUSENTE, confirme que o SQL Editor está aberto no mesmo projeto Supabase usado pelo aplicativo.
+5. Após Success, publique os arquivos do app no Netlify.

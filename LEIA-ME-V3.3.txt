@@ -1,0 +1,7 @@
+PRODUTOS GILÇANA CLIENTE V3.3
+
+1. Execute sql/ATUALIZAR_CLIENTE_V3_3.sql no projeto Supabase atual.
+2. Publique o CONTEÚDO desta pasta na raiz do repositório GitHub Pages do cliente.
+3. Corrige chat por Enter/botão, pedidos com detalhes, layout de produtos, página de detalhes/galeria, confirmação e mensagens automáticas de status.
+
+Observação: “Pronto para envio” já está previsto no cliente e no banco, mas o painel do gerente ainda precisará da ação para marcar esse estágio.

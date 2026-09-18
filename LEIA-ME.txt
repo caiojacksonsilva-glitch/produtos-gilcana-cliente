@@ -1,0 +1,17 @@
+PRODUTOS GILÇANA CLIENTE - V2 REAL
+
+1) No Supabase SQL Editor, execute sql/ATIVAR_APP_CLIENTE.sql.
+2) No Supabase Dashboard, habilite Authentication > Providers/Sign In > Anonymous Sign-Ins.
+3) Cadastre um cliente e defina o código de acesso no SQL Editor.
+
+Exemplo (troque nome, telefone e código):
+insert into public.clientes(nome_empresa,nome_cliente,telefone,ativo)
+values ('Mercado do João','João','31999999999',true)
+on conflict (telefone) do update set nome_empresa=excluded.nome_empresa, ativo=true;
+
+select public.definir_codigo_cliente('31999999999','1234');
+
+4) Envie todo o conteúdo desta pasta para o Netlify substituindo a versão anterior.
+5) Abra no celular e entre com nome + telefone + código.
+
+IMPORTANTE: a Publishable Key no app é pública por projeto. Nunca coloque service_role/secret key no app.
