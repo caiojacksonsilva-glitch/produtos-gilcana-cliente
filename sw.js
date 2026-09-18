@@ -1,5 +1,5 @@
-const CACHE='gilcana-v400-final';
-const CORE=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./assets/logo.png','./assets/icon-180.png','./assets/icon-192.png','./assets/icon-512.png'];
+const CACHE='gilcana-v410-install';
+const CORE=['./','./index.html','./instalar.html','./style.css','./app.js','./manifest.webmanifest','./assets/logo.png','./assets/icon-180.png','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))});
 self.addEventListener('activate',event=>{event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
 self.addEventListener('fetch',event=>{

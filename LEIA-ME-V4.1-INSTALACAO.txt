@@ -1,0 +1,12 @@
+PRODUTOS GILÇANA CLIENTE V4.1 — INSTALAÇÃO SIMPLIFICADA
+
+Página de instalação: instalar.html
+
+Link para enviar aos clientes:
+https://caiojacksonsilva-glitch.github.io/produtos-gilcana-cliente/instalar.html
+
+Android: quando o navegador disponibilizar o prompt, o botão Instalar aplicativo abre a instalação diretamente. Caso contrário, a página mostra o passo a passo.
+iPhone/iPad: a página mostra o passo a passo do Safari para Adicionar à Tela de Início.
+
+Nenhum SQL novo é necessário.
+Publique todos os arquivos deste pacote na raiz do mesmo repositório GitHub Pages, substituindo os anteriores.
