@@ -1,6 +1,35 @@
 const SUPABASE_URL='https://kpzcvreqjkgevzmlipjs.supabase.co';
 const SUPABASE_KEY='sb_publishable_PgFcb8Fu86xyZ1Fiu1ftEQ_664m7EdB';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const FIREBASE_CONFIG={apiKey:'AIzaSyCUh85u__pabANEfEW01gJcBhRi28j5glA',authDomain:'produtos-gilcana.firebaseapp.com',projectId:'produtos-gilcana',storageBucket:'produtos-gilcana.firebasestorage.app',messagingSenderId:'517281824102',appId:'1:517281824102:web:b32b94de1bd2d189215ca7'};
+const FIREBASE_VAPID='BAISAuGmLHZwgkaKdBOZrPTRGAAfVd38RhZwFSMkrepaLQ4tzCWa9bolZ0p8I9e7VpF2YwSJIAfAkOzpY2ODygw';
+let firebaseMessaging=null;
+async function initPush(){
+ if(!account||!('Notification' in window)||!('serviceWorker' in navigator)||!window.firebase)return;
+ try{
+  if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+  firebaseMessaging=firebase.messaging();
+  firebaseMessaging.onMessage(payload=>{const n=payload.notification||{};toast(n.title?`${n.title}: ${n.body||''}`:(payload.data?.body||'Nova notificação.'));loadNotifications();refreshChatUnread();});
+  if(Notification.permission==='granted')await registerPushToken(false);
+ }catch(e){console.error('Push init',e)}
+}
+async function registerPushToken(askPermission=true){
+ if(!account||!('Notification' in window)||!('serviceWorker' in navigator))return false;
+ try{
+  if(askPermission&&Notification.permission!=='granted'){const p=await Notification.requestPermission();if(p!=='granted')throw new Error('Permissão de notificações não concedida.');}
+  if(Notification.permission!=='granted')return false;
+  if(!window.firebase)throw new Error('Firebase não carregou.');
+  if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+  firebaseMessaging=firebaseMessaging||firebase.messaging();
+  const reg=await navigator.serviceWorker.ready;
+  const token=await firebaseMessaging.getToken({vapidKey:FIREBASE_VAPID,serviceWorkerRegistration:reg});
+  if(!token)throw new Error('Não foi possível obter o token deste aparelho.');
+  const {error}=await sb.rpc('registrar_meu_push',{p_token:token,p_plataforma:navigator.userAgent,p_endpoint:location.origin+location.pathname});
+  if(error)throw error;
+  return true;
+ }catch(e){console.error('Push register',e);if(askPermission)toast(e.message||'Não foi possível ativar notificações.');return false;}
+}
+
 let account=null, products=[], recommendedProductIds=[], recommendationQty={}, recommendationCursor=0, selected={}, detailProductId=null, detailQuantity=1, cart=JSON.parse(localStorage.getItem('gilcana-cart-v2')||'{}'), activeChatOrder=null, orderRows=[], chatUnreadCount=0, notificationUnreadCount=0;
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
@@ -13,7 +42,7 @@ async function ensureAuth(){let {data:{session}}=await sb.auth.getSession();if(!
 async function getAccount(){const {data,error}=await sb.rpc('minha_conta');if(error)throw error;return data}
 async function boot(){try{await ensureAuth();account=await getAccount();if(account){openApp();await Promise.all([loadCatalog(),loadDeliveryDates(),loadOrders(),loadMessages(),loadNotifications()]);subscribeRealtime()}else showLogin()}catch(e){showLogin(e.message)}}
 function showLogin(msg=''){ $('#loginScreen').style.display='grid';$('#appShell').hidden=true;$('#loginError').textContent=msg}
-function openApp(){ $('#loginScreen').style.display='none';$('#appShell').hidden=false;$('#hello').textContent='OLÁ, '+String(account.nome_acesso||account.nome_empresa||'CLIENTE').toUpperCase()}
+function openApp(){ $('#loginScreen').style.display='none';$('#appShell').hidden=false;$('#hello').textContent='OLÁ, '+String(account.nome_acesso||account.nome_empresa||'CLIENTE').toUpperCase();setTimeout(initPush,700)}
 async function activateDevice(){const btn=$('#loginBtn');btn.disabled=true;$('#loginError').textContent='';try{await ensureAuth();const nome=$('#loginName').value.trim(),telefone=normalizePhone($('#loginPhone').value),codigo=$('#loginCode').value.trim();if(!nome||telefone.length<10||codigo.length<4)throw new Error('Preencha nome, WhatsApp e código de acesso.');const {data,error}=await sb.rpc('ativar_aparelho',{p_nome:nome,p_telefone:telefone,p_codigo:codigo});if(error)throw error;account=await getAccount();openApp();await Promise.all([loadCatalog(),loadDeliveryDates(),loadOrders(),loadMessages(),loadNotifications()]);subscribeRealtime();startUnreadPolling();toast('Acesso autorizado.')}catch(e){$('#loginError').textContent=e.message||'Não foi possível entrar.'}finally{btn.disabled=false}}
 async function loadCatalog(){const {data,error}=await sb.from('produtos').select('id,nome,descricao,unidade,quantidade_disponivel,imagem_url').eq('ativo',true).order('nome');if(error)throw error;products=data||[];const {data:recs}=await sb.from('produtos_recomendados').select('produto_id,ordem').eq('ativo',true).order('ordem');recommendedProductIds=(recs||[]).map(r=>r.produto_id).filter(id=>products.some(p=>p.id===id)).slice(0,3);if(!recommendedProductIds.length)recommendedProductIds=products.slice(0,3).map(p=>p.id);renderProducts();renderCart()}
 function renderProducts(){const q=($('#search')?.value||'').toLowerCase();$('#products').innerHTML=products.filter(p=>p.nome.toLowerCase().includes(q)).map(p=>`<article class="product"><div class="pic" onclick="openProductDetail(${p.id})" title="Ver detalhes">${pic(p)}</div><div class="body"><h3 class="product-title-link" onclick="openProductDetail(${p.id})">${esc(p.nome)}</h3><small>${esc(p.unidade)} • ${Number(p.quantidade_disponivel)} disponíveis</small><div class="selector"><button onclick="qty(${p.id},-1)">−</button><b id="q${p.id}">${selected[p.id]||0}</b><button onclick="qty(${p.id},1)">+</button></div><button class="add" onclick="add(${p.id})">Adicionar</button></div></article>`).join('')||'<div class="card">Nenhum produto disponível.</div>'}
@@ -61,20 +90,7 @@ function renderOrderReference(text){
  if(!/^Pedido #/.test(raw)||!raw.includes(' • Entrega: ')||!raw.includes(' • Status: ')||!raw.includes(' • Produtos: '))return null;
  const m=raw.match(/^Pedido #([^•]+) • Entrega: ([^•]+) • Status: ([^•]+) • Produtos: (.*)$/);
  if(!m)return null;
- const numero=m[1].trim(), entrega=m[2].trim(), status=m[3].trim(), produtos=m[4].trim();
- const o=orderRows.find(x=>String(x.numero||x.id)===numero);
- const criado=o?.criado_em?new Date(o.criado_em).toLocaleString('pt-BR'):'';
- const statusKey=o?.status||'';
- const cls=statusKey==='confirmado'||statusKey==='pronto_envio'?'confirmed':statusKey==='recebido'?'received':statusKey==='cancelado'?'cancelled':'sent';
- const linhas=produtos.split(';').map(x=>x.trim()).filter(Boolean);
- const resumo=linhas.join(' · ');
- return `<article class="chat-order-reference order">
-   <div class="chat-order-origin"><span class="chat-order-origin-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v3h3v15H4V6h3V3Z"/><path d="M9 3h6v4H9zM8 11h8M8 15h8M8 19h5"/></svg></span><span>Pedido vinculado à conversa</span></div>
-   <div class="order-top"><b>Pedido #${esc(numero)}</b><span class="status ${cls}">${esc(status)}</span></div>
-   <p><b>Entrega:</b> ${esc(entrega)}</p>
-   ${criado?`<p class="order-meta">Feito em ${esc(criado)}</p>`:''}
-   <p>${esc(resumo)}</p>
- </article>`;
+ return `<div class="order-chat-card"><div class="order-chat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v3h3v15H4V6h3V3Z"/><path d="M9 3h6v4H9zM8 11h8M8 15h8M8 19h5"/></svg></div><div class="order-chat-copy"><small>REFERÊNCIA DO PEDIDO</small><b>Pedido #${esc(m[1].trim())}</b><span><strong>Entrega:</strong> ${esc(m[2].trim())}</span><span><strong>Status:</strong> ${esc(m[3].trim())}</span><span class="order-chat-products">${esc(m[4].trim())}</span></div></div>`;
 }
 async function loadMessages(){
  if(!account)return;
@@ -131,9 +147,11 @@ async function loadAccountPage(){
   else{box.innerHTML='';form.style.display='grid'}
 }
 async function setNotifications(enabled){
+  if(enabled){const ok=await registerPushToken(true);if(!ok){$('#notificationsToggle').checked=false;return;}}
   const {error}=await sb.rpc('definir_minhas_notificacoes',{p_ativas:enabled});
   if(error){$('#notificationsToggle').checked=!enabled;return toast('Não foi possível alterar as notificações.')}
-  account.notificacoes_ativas=enabled;toast(enabled?'Notificações ativadas.':'Notificações desativadas.')
+  if(!enabled)await sb.rpc('desativar_meus_push');
+  account.notificacoes_ativas=enabled;toast(enabled?'Notificações push ativadas neste aparelho.':'Notificações desativadas.')
 }
 async function saveAuthorizedPerson(){
   const nome=$('#authorizedName').value.trim(), telefone=normalizePhone($('#authorizedPhone').value), codigo=$('#authorizedCode').value.trim();
@@ -150,7 +168,7 @@ function showPage(id){const isChat=id==='chat';document.documentElement.classLis
 function subscribeRealtime(){sb.channel('gilcana-cliente').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>loadOrders()).on('postgres_changes',{event:'*',schema:'public',table:'mensagens'},()=>{if($('#chat').classList.contains('active'))loadMessages();else refreshChatUnread();loadNotifications()}).on('postgres_changes',{event:'*',schema:'public',table:'notificacoes'},()=>loadNotifications()).on('postgres_changes',{event:'*',schema:'public',table:'produtos'},()=>loadCatalog()).subscribe()}
 let unreadPoll=null;function startUnreadPolling(){if(unreadPoll)clearInterval(unreadPoll);refreshChatUnread();unreadPoll=setInterval(()=>{if(account&&!document.hidden)refreshChatUnread()},4000)}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&account){refreshChatUnread();loadNotifications()}});
-boot();setTimeout(refreshChatUnread,1200);if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
+boot();setTimeout(refreshChatUnread,1200);if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}));
 
 
 // Bloqueia gestos de zoom no app (pinch/double tap), mantendo rolagem e toques normais.

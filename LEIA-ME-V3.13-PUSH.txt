@@ -1,0 +1,9 @@
+PRODUTOS GILÇANA CLIENTE V3.13 — PUSH
+1) Execute sql/ATUALIZAR_CLIENTE_V3_13_PUSH.sql no Supabase.
+2) Publique os arquivos do app no GitHub Pages.
+3) No Firebase > Configurações do projeto > Contas de serviço, gere uma chave privada JSON. NÃO coloque esse JSON no GitHub.
+4) No Supabase > Edge Functions, crie/deploy a função enviar-push usando supabase/functions/enviar-push/index.ts.
+5) Nos Secrets da Edge Function configure FIREBASE_SERVICE_ACCOUNT_JSON com o conteúdo completo do JSON e GILCANA_WEBHOOK_SECRET com uma senha longa aleatória.
+6) No Supabase > Database > Webhooks, crie dois webhooks INSERT apontando para a URL da função enviar-push: um para public.notificacoes e outro para public.mensagens. Em ambos envie o header x-gilcana-webhook-secret com a mesma senha do secret.
+7) No celular, abra o app, Minha conta, ative Notificações e aceite a permissão do sistema. Em iPhone, instale o PWA na Tela de Início antes de ativar push.
+8) Teste enviando uma mensagem pelo Gerente e alterando um status de pedido.
