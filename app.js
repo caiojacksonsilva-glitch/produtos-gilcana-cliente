@@ -1,7 +1,7 @@
 const SUPABASE_URL='https://kpzcvreqjkgevzmlipjs.supabase.co';
 const SUPABASE_KEY='sb_publishable_PgFcb8Fu86xyZ1Fiu1ftEQ_664m7EdB';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let account=null, products=[], recommendedProductIds=[], recommendationQty={}, recommendationCursor=0, selected={}, detailProductId=null, detailQuantity=1, cart=JSON.parse(localStorage.getItem('gilcana-cart-v2')||'{}'), activeChatOrder=null;
+let account=null, products=[], recommendedProductIds=[], recommendationQty={}, recommendationCursor=0, selected={}, detailProductId=null, detailQuantity=1, cart=JSON.parse(localStorage.getItem('gilcana-cart-v2')||'{}'), activeChatOrder=null, orderRows=[], chatUnreadCount=0, notificationUnreadCount=0;
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
 function save(){localStorage.setItem('gilcana-cart-v2',JSON.stringify(cart))}
@@ -44,10 +44,18 @@ function closeModal(){$('#modal').classList.remove('open')}
 async function finishOrder(){const btn=$('#confirmOrderBtn'),errBox=$('#orderSubmitError');if(btn.disabled)return;btn.disabled=true;btn.textContent='Enviando…';if(errBox)errBox.textContent='';try{const itens=Object.entries(cart).filter(([,q])=>Number(q)>0).map(([id,q])=>({produto_id:Number(id),quantidade:Number(q)}));if(!itens.length)throw new Error('O pedido está vazio.');const delivery=$('#delivery').value;const {data,error}=await sb.rpc('criar_meu_pedido',{p_data_entrega:delivery,p_itens:itens});if(error)throw error;if(!data)throw new Error('O servidor não devolveu o número do pedido.');cart={};save();closeModal();await loadCatalog();await loadOrders();await loadMessages();await loadNotifications();$('#successOrderText').textContent='Pedido #'+data+' enviado com sucesso. Acompanhe o status em Meus pedidos.';$('#successModal').classList.add('open')}catch(e){const msg=e?.message||'Não foi possível enviar o pedido.';console.error('Erro ao criar pedido',e);if(errBox)errBox.textContent=msg;toast('Pedido não enviado. Veja o erro na confirmação.')}finally{btn.disabled=false;btn.textContent='Sim, confirmar'}}
 function closeSuccessModal(){$('#successModal').classList.remove('open');showPage('orders')}
 function statusLabel(s){return {enviado:'Enviado',recebido:'Recebido',confirmado:'Em preparação',pronto_envio:'Pronto para envio',cancelado:'Cancelado'}[s]||s}
-async function loadOrders(){if(!account)return;const {data,error}=await sb.rpc('listar_meus_pedidos');if(error){console.error(error);$('#ordersList').innerHTML='<div class="card"><b>Não foi possível carregar seus pedidos.</b><p>'+esc(error.message||'Erro desconhecido')+'</p></div>';return;}const rows=Array.isArray(data)?data:[];$('#ordersList').innerHTML=rows.map(o=>{const itens=o.itens||[];const resumo=itens.slice(0,2).map(i=>`${Number(i.quantidade)} ${esc(i.unidade||'')} — ${esc(i.nome||'Produto')}`).join(' · ')+(itens.length>2?' · +'+(itens.length-2)+' item(ns)':'');const cls=o.status==='confirmado'||o.status==='pronto_envio'?'confirmed':o.status==='recebido'?'received':o.status==='cancelado'?'cancelled':'sent';const details=itens.map(i=>`<div class="order-detail-item"><span><b>${esc(i.nome||'Produto')}</b><br><small>${esc(i.unidade||'')}</small></span><b>${Number(i.quantidade)}</b></div>`).join('');return `<article class="order"><div class="order-top"><b>Pedido #${o.numero||o.id}</b><span class="status ${cls}">${statusLabel(o.status)}</span></div><p><b>Entrega:</b> ${fmtDate(o.data_entrega)}</p><p class="order-meta">Feito em ${new Date(o.criado_em).toLocaleString('pt-BR')}</p><p>${resumo}</p><div class="order-actions"><button onclick="toggleOrderStatus('dt${o.id}')">Ver detalhes</button><button onclick="openOrderChat(${o.id})">Falar no chat</button></div><div id="dt${o.id}" class="order-details"><h4>Produtos encomendados</h4>${details}<p><b>Data de entrega:</b> ${fmtDate(o.data_entrega)}</p><p><b>Status:</b> ${statusLabel(o.status)}</p></div></article>`}).join('')||'<div class="card">Você ainda não possui pedidos.</div>'}
+async function loadOrders(){if(!account)return;const {data,error}=await sb.rpc('listar_meus_pedidos');if(error){console.error(error);$('#ordersList').innerHTML='<div class="card"><b>Não foi possível carregar seus pedidos.</b><p>'+esc(error.message||'Erro desconhecido')+'</p></div>';return;}const rows=Array.isArray(data)?data:[];orderRows=rows;$('#ordersList').innerHTML=rows.map(o=>{const itens=o.itens||[];const resumo=itens.slice(0,2).map(i=>`${Number(i.quantidade)} ${esc(i.unidade||'')} — ${esc(i.nome||'Produto')}`).join(' · ')+(itens.length>2?' · +'+(itens.length-2)+' item(ns)':'');const cls=o.status==='confirmado'||o.status==='pronto_envio'?'confirmed':o.status==='recebido'?'received':o.status==='cancelado'?'cancelled':'sent';const details=itens.map(i=>`<div class="order-detail-item"><span><b>${esc(i.nome||'Produto')}</b><br><small>${esc(i.unidade||'')}</small></span><b>${Number(i.quantidade)}</b></div>`).join('');return `<article class="order"><div class="order-top"><b>Pedido #${o.numero||o.id}</b><span class="status ${cls}">${statusLabel(o.status)}</span></div><p><b>Entrega:</b> ${fmtDate(o.data_entrega)}</p><p class="order-meta">Feito em ${new Date(o.criado_em).toLocaleString('pt-BR')}</p><p>${resumo}</p><div class="order-actions"><button onclick="toggleOrderStatus('dt${o.id}')">Ver detalhes</button><button onclick="openOrderChat(${o.id})">Falar no chat</button></div><div id="dt${o.id}" class="order-details"><h4>Produtos encomendados</h4>${details}<p><b>Data de entrega:</b> ${fmtDate(o.data_entrega)}</p><p><b>Status:</b> ${statusLabel(o.status)}</p></div></article>`}).join('')||'<div class="card">Você ainda não possui pedidos.</div>'}
 function toggleOrderStatus(id){$('#'+id)?.classList.toggle('open')}
 function statusSteps(s){if(s==='cancelado')return '<div class="status-step done"><i></i><span>Pedido enviado</span></div><div class="status-step cancelled-step"><i></i><span>Pedido cancelado</span></div>';const n={enviado:1,recebido:2,confirmado:3,pronto_envio:4}[s]||1;return ['Pedido enviado','Pedido recebido','Pedido em preparação','Pronto para envio'].map((x,i)=>`<div class="status-step ${i<n?'done':''}"><i></i><span>${i<n?x:(i===1?'Aguardando recebimento':'Aguardando confirmação')}</span></div>`).join('')}
-async function openOrderChat(id){activeChatOrder=id;showPage('chat');await loadMessages()}
+async function openOrderChat(id){
+ const o=orderRows.find(x=>Number(x.id)===Number(id)); activeChatOrder=id; showPage('chat'); await loadMessages();
+ if(!o)return;
+ const itens=(o.itens||[]).map(i=>`${Number(i.quantidade)} ${i.unidade||''} — ${i.nome||'Produto'}`).join('; ');
+ const texto=`Pedido #${o.numero||o.id} • Entrega: ${fmtDate(o.data_entrega)} • Status: ${statusLabel(o.status)} • Produtos: ${itens}`;
+ const {error}=await sb.rpc('enviar_minha_mensagem_v3',{p_pedido_id:Number(id),p_mensagem:texto});
+ if(error){console.error('Erro ao enviar dados do pedido ao chat',error);$('#chatError').textContent='Não foi possível anexar os dados do pedido: '+(error.message||'erro desconhecido');return;}
+ await loadMessages();
+}
 async function loadMessages(){
  if(!account)return;
  const box=$('#messages'),err=$('#chatError'); if(err)err.textContent='';
@@ -64,10 +72,14 @@ async function loadMessages(){
  await refreshChatUnread();
  requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)
 }
+function updateUnreadIndicators(){
+ const b=$('#chatUnreadBadge'); if(b){b.textContent=chatUnreadCount>99?'99+':String(chatUnreadCount);b.style.display=chatUnreadCount>0?'block':'none'}
+ const bell=$('#noticeCount'),total=notificationUnreadCount+chatUnreadCount;if(bell){bell.textContent=total>99?'99+':String(total);bell.style.display=total>0?'block':'none'}
+}
 async function refreshChatUnread(){
  if(!account)return;
  const {data,error}=await sb.rpc('contar_minhas_mensagens_nao_lidas'); if(error)return;
- const n=Number(data||0),b=$('#chatUnreadBadge'); if(!b)return; b.textContent=n>99?'99+':String(n); b.style.display=n>0?'block':'none';
+ chatUnreadCount=Number(data||0);updateUnreadIndicators();
 }
 let chatSending=false;
 async function sendChatMessage(){
@@ -85,7 +97,7 @@ async function sendChatMessage(){
    if(err)err.textContent='Não foi possível enviar: '+(e?.message||'erro desconhecido');
  }finally{input.disabled=false;chatSending=false;input.focus()}
 }
-async function loadNotifications(){if(!account)return;const {data}=await sb.from('notificacoes').select('*').eq('cliente_id',account.cliente_id).order('criado_em',{ascending:false}).limit(50);const rows=data||[];$('#noticeCount').textContent=rows.filter(n=>!n.lida).length;$('#noticeCount').style.display=rows.some(n=>!n.lida)?'block':'none';$('#notificationsList').innerHTML=rows.map(n=>`<div class="notice"><i class="notice-dot ${n.tipo?.includes('confirm')?'green':'yellow'}"></i><span><b>${esc(n.titulo)}</b><br>${esc(n.mensagem)}</span></div>`).join('')||'<div class="card">Nenhuma notificação.</div>'}
+async function loadNotifications(){if(!account)return;const {data}=await sb.from('notificacoes').select('*').eq('cliente_id',account.cliente_id).order('criado_em',{ascending:false}).limit(50);const rows=data||[];notificationUnreadCount=rows.filter(n=>!n.lida).length;updateUnreadIndicators();$('#notificationsList').innerHTML=rows.map(n=>`<div class="notice"><i class="notice-dot ${n.tipo?.includes('confirm')?'green':'yellow'}"></i><span><b>${esc(n.titulo)}</b><br>${esc(n.mensagem)}</span></div>`).join('')||'<div class="card">Nenhuma notificação.</div>'}
 async function markNotificationsRead(){await sb.rpc('marcar_minhas_notificacoes_lidas');setTimeout(loadNotifications,300)}
 async function loadAccountPage(){
   if(!account)return;
@@ -115,7 +127,7 @@ async function removeAuthorizedPerson(){
   const {error}=await sb.rpc('remover_minha_pessoa_autorizada');if(error)return toast('Erro: '+error.message);await loadAccountPage();toast('Pessoa autorizada removida.')
 }
 function showPage(id){const isChat=id==='chat';document.documentElement.classList.toggle('chat-lock',isChat);document.body.classList.toggle('chat-open',isChat);document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));$('#cartBar').style.display=id==='shop'?'flex':'none';if(id==='cart')renderCart();if(id==='orders')loadOrders();if(id==='chat')loadMessages();if(id==='accountPage')loadAccountPage();if(id!=='chat')refreshChatUnread();window.scrollTo(0,0)}
-function subscribeRealtime(){sb.channel('gilcana-cliente').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>loadOrders()).on('postgres_changes',{event:'*',schema:'public',table:'mensagens'},()=>{if($('#chat').classList.contains('active'))loadMessages();else refreshChatUnread()}).on('postgres_changes',{event:'*',schema:'public',table:'notificacoes'},()=>loadNotifications()).on('postgres_changes',{event:'*',schema:'public',table:'produtos'},()=>loadCatalog()).subscribe()}
+function subscribeRealtime(){sb.channel('gilcana-cliente').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>loadOrders()).on('postgres_changes',{event:'*',schema:'public',table:'mensagens'},()=>{if($('#chat').classList.contains('active'))loadMessages();else refreshChatUnread();loadNotifications()}).on('postgres_changes',{event:'*',schema:'public',table:'notificacoes'},()=>loadNotifications()).on('postgres_changes',{event:'*',schema:'public',table:'produtos'},()=>loadCatalog()).subscribe()}
 boot();setTimeout(refreshChatUnread,1200);if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
 
 
