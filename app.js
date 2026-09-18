@@ -61,7 +61,20 @@ function renderOrderReference(text){
  if(!/^Pedido #/.test(raw)||!raw.includes(' • Entrega: ')||!raw.includes(' • Status: ')||!raw.includes(' • Produtos: '))return null;
  const m=raw.match(/^Pedido #([^•]+) • Entrega: ([^•]+) • Status: ([^•]+) • Produtos: (.*)$/);
  if(!m)return null;
- return `<div class="order-chat-card"><div class="order-chat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v3h3v15H4V6h3V3Z"/><path d="M9 3h6v4H9zM8 11h8M8 15h8M8 19h5"/></svg></div><div class="order-chat-copy"><small>REFERÊNCIA DO PEDIDO</small><b>Pedido #${esc(m[1].trim())}</b><span><strong>Entrega:</strong> ${esc(m[2].trim())}</span><span><strong>Status:</strong> ${esc(m[3].trim())}</span><span class="order-chat-products">${esc(m[4].trim())}</span></div></div>`;
+ const numero=m[1].trim(), entrega=m[2].trim(), status=m[3].trim(), produtos=m[4].trim();
+ const o=orderRows.find(x=>String(x.numero||x.id)===numero);
+ const criado=o?.criado_em?new Date(o.criado_em).toLocaleString('pt-BR'):'';
+ const statusKey=o?.status||'';
+ const cls=statusKey==='confirmado'||statusKey==='pronto_envio'?'confirmed':statusKey==='recebido'?'received':statusKey==='cancelado'?'cancelled':'sent';
+ const linhas=produtos.split(';').map(x=>x.trim()).filter(Boolean);
+ const resumo=linhas.join(' · ');
+ return `<article class="chat-order-reference order">
+   <div class="chat-order-origin"><span class="chat-order-origin-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v3h3v15H4V6h3V3Z"/><path d="M9 3h6v4H9zM8 11h8M8 15h8M8 19h5"/></svg></span><span>Pedido vinculado à conversa</span></div>
+   <div class="order-top"><b>Pedido #${esc(numero)}</b><span class="status ${cls}">${esc(status)}</span></div>
+   <p><b>Entrega:</b> ${esc(entrega)}</p>
+   ${criado?`<p class="order-meta">Feito em ${esc(criado)}</p>`:''}
+   <p>${esc(resumo)}</p>
+ </article>`;
 }
 async function loadMessages(){
  if(!account)return;
