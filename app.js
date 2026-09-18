@@ -51,11 +51,23 @@ async function openOrderChat(id){activeChatOrder=id;showPage('chat');await loadM
 async function loadMessages(){
  if(!account)return;
  const box=$('#messages'),err=$('#chatError'); if(err)err.textContent='';
- const {data,error}=await sb.rpc('listar_minhas_mensagens_v2',{p_pedido_id:activeChatOrder||null});
+ const {data,error}=await sb.rpc('listar_minhas_mensagens_v3',{p_pedido_id:activeChatOrder||null});
  if(error){console.error('Erro ao carregar chat',error);if(err)err.textContent='Erro ao carregar conversa: '+(error.message||'erro desconhecido');return;}
  const rows=Array.isArray(data)?data:[];
- box.innerHTML=rows.map(m=>`<div class="bubble ${m.remetente==='cliente'?'me':m.remetente==='sistema'?'system':'them'}" data-message-id="${m.id}">${esc(m.mensagem)}</div>`).join('')||'<div class="bubble system">Envie uma mensagem para a Produtos Gilçana.</div>';
+ box.innerHTML=rows.map(m=>{
+   const mine=m.remetente==='cliente', system=m.remetente==='sistema';
+   const tm=m.criado_em?new Date(m.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+   const checks=mine?`<span class="message-checks ${m.lida_gerente?'read':''}" title="${m.lida_gerente?'Lida':'Recebida'}">${m.lida_gerente?'✓✓':'✓'}</span>`:'';
+   const meta=system?'':`<small class="message-meta"><span>${tm}</span>${checks}</small>`;
+   return `<div class="bubble ${mine?'me':system?'system':'them'}" data-message-id="${m.id}">${esc(m.mensagem)}${meta}</div>`
+ }).join('')||'<div class="bubble system">Envie uma mensagem para a Produtos Gilçana.</div>';
+ await refreshChatUnread();
  requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)
+}
+async function refreshChatUnread(){
+ if(!account)return;
+ const {data,error}=await sb.rpc('contar_minhas_mensagens_nao_lidas'); if(error)return;
+ const n=Number(data||0),b=$('#chatUnreadBadge'); if(!b)return; b.textContent=n>99?'99+':String(n); b.style.display=n>0?'block':'none';
 }
 let chatSending=false;
 async function sendChatMessage(){
@@ -64,7 +76,7 @@ async function sendChatMessage(){
  const temp=document.createElement('div');temp.className='bubble me sending';temp.textContent=text;$('#messages').appendChild(temp);$('#messages').scrollTop=$('#messages').scrollHeight;
  input.value=''; input.disabled=true;
  try{
-   const {data,error}=await sb.rpc('enviar_minha_mensagem_v2',{p_pedido_id:activeChatOrder||null,p_mensagem:text});
+   const {data,error}=await sb.rpc('enviar_minha_mensagem_v3',{p_pedido_id:activeChatOrder||null,p_mensagem:text});
    if(error)throw error;
    temp.classList.remove('sending'); if(data?.id)temp.dataset.messageId=data.id;
    await loadMessages();
@@ -102,9 +114,9 @@ async function removeAuthorizedPerson(){
   if(!confirm('Deseja remover a pessoa autorizada?'))return;
   const {error}=await sb.rpc('remover_minha_pessoa_autorizada');if(error)return toast('Erro: '+error.message);await loadAccountPage();toast('Pessoa autorizada removida.')
 }
-function showPage(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));$('#cartBar').style.display=id==='shop'?'flex':'none';if(id==='cart')renderCart();if(id==='orders')loadOrders();if(id==='chat')loadMessages();if(id==='accountPage')loadAccountPage();window.scrollTo(0,0)}
-function subscribeRealtime(){sb.channel('gilcana-cliente').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>loadOrders()).on('postgres_changes',{event:'*',schema:'public',table:'mensagens'},()=>loadMessages()).on('postgres_changes',{event:'*',schema:'public',table:'notificacoes'},()=>loadNotifications()).on('postgres_changes',{event:'*',schema:'public',table:'produtos'},()=>loadCatalog()).subscribe()}
-boot();if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
+function showPage(id){document.body.classList.toggle('chat-open',id==='chat');document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));$('#cartBar').style.display=id==='shop'?'flex':'none';if(id==='cart')renderCart();if(id==='orders')loadOrders();if(id==='chat')loadMessages();if(id==='accountPage')loadAccountPage();if(id!=='chat')refreshChatUnread();window.scrollTo(0,0)}
+function subscribeRealtime(){sb.channel('gilcana-cliente').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>loadOrders()).on('postgres_changes',{event:'*',schema:'public',table:'mensagens'},()=>{if($('#chat').classList.contains('active'))loadMessages();else refreshChatUnread()}).on('postgres_changes',{event:'*',schema:'public',table:'notificacoes'},()=>loadNotifications()).on('postgres_changes',{event:'*',schema:'public',table:'produtos'},()=>loadCatalog()).subscribe()}
+boot();setTimeout(refreshChatUnread,1200);if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
 
 
 // Bloqueia gestos de zoom no app (pinch/double tap), mantendo rolagem e toques normais.

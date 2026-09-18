@@ -61,3 +61,22 @@ button, a, input, textarea, select, .product-card, .recommend-card { touch-actio
 /* V3.7 — detalhe do produto e diagnóstico visual do chat */
 .product-title-link{cursor:pointer;color:var(--g)}
 .product-detail-buy{position:sticky;bottom:68px;z-index:35;margin:0 14px 18px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:17px;display:grid;grid-template-columns:120px 1fr;gap:10px;box-shadow:0 8px 24px #0002}.detail-selector{display:grid;grid-template-columns:38px 1fr 38px;align-items:center;border:1px solid var(--line);border-radius:13px;overflow:hidden}.detail-selector button{height:44px;border:0;background:#ebe7df;color:var(--g);font-size:22px}.detail-selector b{text-align:center}.detail-add{margin:0;min-height:44px}.chat-error{display:none;background:#fde8e6;color:#9b2f28;padding:8px 12px;font-size:12px;font-weight:700;border-top:1px solid #efc8c3}.chat-error:not(:empty){display:block}.bubble.sending{opacity:.6}.bubble.failed{background:#fde8e6;color:#9b2f28;border:1px solid #e8b8b2}.real-product-image{width:100%;height:100%;object-fit:cover}.pic{overflow:hidden;cursor:pointer}.product .body{position:relative}.product h3{position:static;background:none}
+
+
+/* V3.8 — chat estilo mensageiro, viewport travado e navegação destacada */
+body.chat-open{height:100dvh;min-height:0;overflow:hidden;padding-bottom:0}
+.chatpage.active{position:fixed!important;top:72px!important;bottom:68px!important;left:50%!important;transform:translateX(-50%)!important;width:min(100%,520px)!important;height:auto!important;min-height:0!important;padding:0!important;overflow:hidden!important;background:#efece4;z-index:24;display:flex!important;flex-direction:column!important}
+.chatpage .chathead{flex:0 0 64px;position:relative;z-index:2}
+.chatpage .messages{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;padding:14px 14px 12px!important;background:#efece4!important}
+.chatpage .chat-error{flex:0 0 auto}
+.chatpage .composer{position:relative!important;left:auto!important;bottom:auto!important;transform:none!important;width:100%!important;flex:0 0 auto!important;z-index:3!important;padding:9px 10px calc(9px + env(safe-area-inset-bottom))!important;background:#d8d3c9!important;border-top:1px solid #c9c4ba!important;box-shadow:0 -2px 10px #0000000b!important}
+.chatpage .composer input{background:#f7f4ed!important;border:1px solid #d0cbc1!important}
+.bubble{position:relative;padding-bottom:19px!important}.bubble.system{padding-bottom:10px!important}
+.message-meta{position:absolute;right:9px;bottom:4px;display:flex;align-items:center;gap:3px;font-size:9px;color:#78847e;line-height:1}.message-checks{font-weight:900;letter-spacing:-2px;font-size:12px}.message-checks.read{color:#1687c7}.bubble.them .message-meta{right:8px}
+nav{background:#d6d1c6!important;border-top:1px solid #c4bfb5!important;padding:6px 8px calc(5px + env(safe-area-inset-bottom))!important;height:68px!important;gap:6px}
+nav button{position:relative;border-radius:15px!important;transition:.18s ease;color:#758079!important}
+nav button.active{background:#f4f1e9!important;color:var(--g)!important;box-shadow:0 2px 8px #00000010!important}
+nav button.active span{transform:translateY(-1px)}
+.chat-unread-badge{display:none;position:absolute;top:2px;left:calc(50% + 10px);min-width:18px;height:18px;padding:0 5px;border-radius:12px;background:#c8322d;color:#fff;font-style:normal;font-size:10px;font-weight:900;line-height:18px;text-align:center;border:2px solid #d6d1c6}
+nav button.active .chat-unread-badge{border-color:#f4f1e9}
+@supports not (height:100dvh){body.chat-open{height:100vh}}
