@@ -1,0 +1,4 @@
+PRODUTOS GILÇANA CLIENTE V3.4
+1. Execute sql/ATUALIZAR_CLIENTE_V3_4.sql no mesmo Supabase.
+2. Substitua os arquivos do repositório GitHub Pages pelos desta versão.
+Correções: envio de chat, criação de pedido sem rollback causado pelo chat automático, histórico de pedidos via RPC e novo seletor visual de data.
