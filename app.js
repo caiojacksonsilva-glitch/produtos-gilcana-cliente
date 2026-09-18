@@ -57,7 +57,7 @@ async function loadMessages(){
  box.innerHTML=rows.map(m=>{
    const mine=m.remetente==='cliente', system=m.remetente==='sistema';
    const tm=m.criado_em?new Date(m.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
-   const checks=mine?`<span class="message-checks ${m.lida_gerente?'read':''}" title="${m.lida_gerente?'Lida':'Recebida'}">${m.lida_gerente?'✓✓':'✓'}</span>`:'';
+   const checks=mine?`<span class="message-checks ${m.lida_gerente?'read':''}" title="${m.lida_gerente?'Lida':'Recebida'}">${m.lida_gerente?'<svg viewBox="0 0 24 14" aria-hidden="true"><path d="M1.5 7.5 5 11l6.2-7"/><path d="M8.5 7.5 12 11l6.2-7"/></svg>':'<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 7.5 5 11l7-8"/></svg>'}</span>`:'';
    const meta=system?'':`<small class="message-meta"><span>${tm}</span>${checks}</small>`;
    return `<div class="bubble ${mine?'me':system?'system':'them'}" data-message-id="${m.id}">${esc(m.mensagem)}${meta}</div>`
  }).join('')||'<div class="bubble system">Envie uma mensagem para a Produtos Gilçana.</div>';
@@ -114,7 +114,7 @@ async function removeAuthorizedPerson(){
   if(!confirm('Deseja remover a pessoa autorizada?'))return;
   const {error}=await sb.rpc('remover_minha_pessoa_autorizada');if(error)return toast('Erro: '+error.message);await loadAccountPage();toast('Pessoa autorizada removida.')
 }
-function showPage(id){document.body.classList.toggle('chat-open',id==='chat');document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));$('#cartBar').style.display=id==='shop'?'flex':'none';if(id==='cart')renderCart();if(id==='orders')loadOrders();if(id==='chat')loadMessages();if(id==='accountPage')loadAccountPage();if(id!=='chat')refreshChatUnread();window.scrollTo(0,0)}
+function showPage(id){const isChat=id==='chat';document.documentElement.classList.toggle('chat-lock',isChat);document.body.classList.toggle('chat-open',isChat);document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));$('#cartBar').style.display=id==='shop'?'flex':'none';if(id==='cart')renderCart();if(id==='orders')loadOrders();if(id==='chat')loadMessages();if(id==='accountPage')loadAccountPage();if(id!=='chat')refreshChatUnread();window.scrollTo(0,0)}
 function subscribeRealtime(){sb.channel('gilcana-cliente').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>loadOrders()).on('postgres_changes',{event:'*',schema:'public',table:'mensagens'},()=>{if($('#chat').classList.contains('active'))loadMessages();else refreshChatUnread()}).on('postgres_changes',{event:'*',schema:'public',table:'notificacoes'},()=>loadNotifications()).on('postgres_changes',{event:'*',schema:'public',table:'produtos'},()=>loadCatalog()).subscribe()}
 boot();setTimeout(refreshChatUnread,1200);if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
 

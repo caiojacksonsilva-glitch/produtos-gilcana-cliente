@@ -80,3 +80,26 @@ nav button.active span{transform:translateY(-1px)}
 .chat-unread-badge{display:none;position:absolute;top:2px;left:calc(50% + 10px);min-width:18px;height:18px;padding:0 5px;border-radius:12px;background:#c8322d;color:#fff;font-style:normal;font-size:10px;font-weight:900;line-height:18px;text-align:center;border:2px solid #d6d1c6}
 nav button.active .chat-unread-badge{border-color:#f4f1e9}
 @supports not (height:100dvh){body.chat-open{height:100vh}}
+
+/* V3.9 — chat viewport realmente travado + navegação inferior verde */
+html.chat-lock,html.chat-lock body{height:100%;max-height:100%;overflow:hidden!important;overscroll-behavior:none!important}
+body.chat-open{position:fixed!important;inset:0!important;width:100%!important;max-width:520px!important;margin:0 auto!important;height:100dvh!important;max-height:100dvh!important;overflow:hidden!important;padding:0!important;overscroll-behavior:none!important}
+body.chat-open header{position:absolute!important;top:0;left:0;right:0;width:100%}
+.chatpage.active{top:72px!important;bottom:76px!important;overscroll-behavior:none!important;touch-action:none}
+.chatpage .messages{overscroll-behavior-y:contain!important;touch-action:pan-y!important;-webkit-overflow-scrolling:touch!important;scrollbar-gutter:stable}
+.chatpage .composer{touch-action:manipulation}
+.message-meta{gap:5px!important;font-size:10px!important;color:#748079!important}
+.message-checks{display:inline-flex;align-items:center;justify-content:center;width:20px;height:13px;letter-spacing:0!important;font-size:0!important;color:#77827c}
+.message-checks svg{display:block;width:20px;height:13px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.message-checks.read{color:#087cc1!important;filter:drop-shadow(0 0 1px #087cc155)}
+.message-checks.read svg{stroke-width:2.35}
+nav{height:76px!important;background:#e4e9e3!important;border-top:1px solid #c7d1ca!important;padding:7px 9px calc(7px + env(safe-area-inset-bottom))!important;gap:7px!important;box-shadow:0 -5px 18px #064f3d12!important}
+nav button{min-width:0;height:58px;border-radius:18px!important;color:#66756e!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px!important;font-weight:800!important;transition:background .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease!important}
+nav button span{width:31px;height:27px!important;margin:0!important;border-radius:12px;display:grid!important;place-items:center!important;transition:.18s ease}
+nav button .ui-icon{width:23px;height:23px}
+nav button.active{background:#064f3d!important;color:#fff!important;box-shadow:0 5px 14px #064f3d30!important;transform:translateY(-2px)}
+nav button.active span{background:#ffffff18;transform:none!important}
+nav button.active .ui-icon{stroke:#fff!important}
+.chat-unread-badge{top:1px!important;left:calc(50% + 9px)!important;background:#cf302b!important;border:2px solid #e4e9e3!important;box-shadow:0 2px 6px #0002!important}
+nav button.active .chat-unread-badge{border-color:#064f3d!important}
+@supports not (height:100dvh){body.chat-open{height:100vh!important;max-height:100vh!important}}
