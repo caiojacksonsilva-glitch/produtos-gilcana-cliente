@@ -10,20 +10,32 @@ async function initPush(){
   if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
   firebaseMessaging=firebase.messaging();
   firebaseMessaging.onMessage(payload=>{const n=payload.notification||{};toast(n.title?`${n.title}: ${n.body||''}`:(payload.data?.body||'Nova notificação.'));loadNotifications();refreshChatUnread();});
-  if(Notification.permission==='granted')await registerPushToken(false);
+  // Só registra automaticamente quando a conta deseja notificações.
+  // Assim, desligar no app não é desfeito silenciosamente ao reabrir a página.
+  if(Notification.permission==='granted'&&account.notificacoes_ativas!==false)await registerPushToken(false);
  }catch(e){console.error('Push init',e)}
 }
 async function registerPushToken(askPermission=true){
- if(!account||!('Notification' in window)||!('serviceWorker' in navigator))return false;
+ if(!account)throw new Error('Conta não carregada.');
+ if(!('Notification' in window))throw new Error('Este navegador não oferece notificações Web Push.');
+ if(!('serviceWorker' in navigator))throw new Error('Este navegador não oferece suporte ao serviço de notificações.');
  try{
-  if(askPermission&&Notification.permission!=='granted'){const p=await Notification.requestPermission();if(p!=='granted')throw new Error('Permissão de notificações não concedida.');}
-  if(Notification.permission!=='granted')return false;
-  if(!window.firebase)throw new Error('Firebase não carregou.');
+  if(Notification.permission==='denied'){
+   throw new Error('As notificações estão bloqueadas no navegador. Abra as configurações do site/celular, permita Notificações e tente novamente.');
+  }
+  if(askPermission&&Notification.permission==='default'){
+   const p=await Notification.requestPermission();
+   if(p!=='granted')throw new Error(p==='denied'?'As notificações foram bloqueadas. Libere a permissão nas configurações do navegador e tente novamente.':'A permissão de notificações não foi concedida.');
+  }
+  if(Notification.permission!=='granted')throw new Error('Permissão de notificações pendente.');
+  if(!window.firebase)throw new Error('Firebase não carregou. Atualize a página e tente novamente.');
   if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
   firebaseMessaging=firebaseMessaging||firebase.messaging();
   const reg=await navigator.serviceWorker.ready;
+  // getToken recupera o token existente ou cria outro. Isso permite reativar
+  // o aparelho depois de desativá-lo no Supabase.
   const token=await firebaseMessaging.getToken({vapidKey:FIREBASE_VAPID,serviceWorkerRegistration:reg});
-  if(!token)throw new Error('Não foi possível obter o token deste aparelho.');
+  if(!token)throw new Error('Não foi possível registrar este aparelho no Firebase.');
   const {error}=await sb.rpc('registrar_meu_push',{p_token:token,p_plataforma:navigator.userAgent,p_endpoint:location.origin+location.pathname});
   if(error)throw error;
   return true;
@@ -146,12 +158,42 @@ async function loadAccountPage(){
   if(data&&data.id){box.innerHTML=`<div class="authorized-current"><div><b>${esc(data.nome)}</b><small>${esc(data.telefone)}</small></div><button class="danger-outline" onclick="removeAuthorizedPerson()">Remover</button></div>`;form.style.display='none'}
   else{box.innerHTML='';form.style.display='grid'}
 }
+let changingNotifications=false;
 async function setNotifications(enabled){
-  if(enabled){const ok=await registerPushToken(true);if(!ok){$('#notificationsToggle').checked=false;return;}}
-  const {error}=await sb.rpc('definir_minhas_notificacoes',{p_ativas:enabled});
-  if(error){$('#notificationsToggle').checked=!enabled;return toast('Não foi possível alterar as notificações.')}
-  if(!enabled)await sb.rpc('desativar_meus_push');
-  account.notificacoes_ativas=enabled;toast(enabled?'Notificações push ativadas neste aparelho.':'Notificações desativadas.')
+  const toggle=$('#notificationsToggle');
+  if(changingNotifications)return;
+  changingNotifications=true;
+  if(toggle)toggle.disabled=true;
+  try{
+    if(enabled){
+      // Primeiro garante permissão + token + registro do aparelho.
+      const ok=await registerPushToken(true);
+      if(!ok){if(toggle)toggle.checked=false;return;}
+      // Só depois marca a preferência da conta como ativa.
+      const {error}=await sb.rpc('definir_minhas_notificacoes',{p_ativas:true});
+      if(error)throw error;
+      account.notificacoes_ativas=true;
+      if(toggle)toggle.checked=true;
+      toast('Notificações ativadas neste aparelho.');
+    }else{
+      // Desativa o envio no servidor, mas NÃO revoga a permissão do navegador.
+      // Assim o usuário consegue ativar novamente pelo próprio botão.
+      const {error}=await sb.rpc('definir_minhas_notificacoes',{p_ativas:false});
+      if(error)throw error;
+      const {error:pushError}=await sb.rpc('desativar_meus_push');
+      if(pushError)throw pushError;
+      account.notificacoes_ativas=false;
+      if(toggle)toggle.checked=false;
+      toast('Notificações desativadas. Você pode ativá-las novamente quando quiser.');
+    }
+  }catch(e){
+    console.error('Alterar notificações',e);
+    if(toggle)toggle.checked=account.notificacoes_ativas!==false;
+    toast(e?.message||'Não foi possível alterar as notificações.');
+  }finally{
+    changingNotifications=false;
+    if(toggle)toggle.disabled=false;
+  }
 }
 async function saveAuthorizedPerson(){
   const nome=$('#authorizedName').value.trim(), telefone=normalizePhone($('#authorizedPhone').value), codigo=$('#authorizedCode').value.trim();

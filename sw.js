@@ -1,4 +1,4 @@
-const CACHE='gilcana-v313-push';
+const CACHE='gilcana-v314-push';
 const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./assets/logo.png','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x))))]))});

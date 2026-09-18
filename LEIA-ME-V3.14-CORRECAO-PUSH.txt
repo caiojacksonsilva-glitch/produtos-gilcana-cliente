@@ -1,0 +1,9 @@
+PRODUTOS GILÇANA CLIENTE V3.14 — CORREÇÃO ATIVAR/DESATIVAR PUSH
+
+- Corrige reativação das notificações após desligar pelo app.
+- O botão só fica ativo após obter o token FCM e registrá-lo no Supabase.
+- Desativar não revoga a permissão do navegador; apenas desativa o envio no servidor.
+- Se o navegador estiver bloqueando notificações, o app informa que a permissão deve ser liberada nas configurações.
+- Não requer novo SQL.
+
+Publique os arquivos na raiz do repositório produtos-gilcana-cliente.
