@@ -113,3 +113,8 @@ nav button.active .chat-unread-badge{border-color:#064f3d!important}
 .order-chat-icon{flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:var(--g);display:grid;place-items:center;box-shadow:0 3px 8px #064f3d25}
 .order-chat-icon svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .order-chat-copy{min-width:0;display:flex;flex-direction:column;gap:3px}.order-chat-copy small{font-size:9px;letter-spacing:.08em;color:#6f7d75;font-weight:900}.order-chat-copy b{font-size:14px;color:var(--g)}.order-chat-copy span{font-size:11px;line-height:1.35}.order-chat-products{margin-top:4px;padding-top:6px;border-top:1px solid #d8e5dc;color:#526159}.order-reference-bubble .message-meta{padding:2px 5px 0}
+
+/* V4.0 — acabamento de instalação */
+.app-brand-icon{width:112px!important;height:112px!important;object-fit:contain!important;border-radius:24px!important;margin:0 auto 12px!important;display:block!important;box-shadow:0 8px 24px #064f3d22!important}
+.install-card{margin-bottom:14px}.install-head{display:flex;gap:13px;align-items:center;margin-bottom:13px}.install-head img{width:62px;height:62px;border-radius:15px;object-fit:cover;box-shadow:0 4px 12px #0001}.install-head h3{margin:0 0 4px}.install-head p{margin:0}.install-card .primary{width:100%;margin:0}.install-help{margin:9px 2px 0;color:var(--muted);font-size:12px;line-height:1.4}
+@media (display-mode:standalone){body{user-select:none;-webkit-user-select:none}input,textarea{user-select:text;-webkit-user-select:text}}

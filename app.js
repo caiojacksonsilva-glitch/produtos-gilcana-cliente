@@ -1,47 +1,6 @@
 const SUPABASE_URL='https://kpzcvreqjkgevzmlipjs.supabase.co';
 const SUPABASE_KEY='sb_publishable_PgFcb8Fu86xyZ1Fiu1ftEQ_664m7EdB';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const FIREBASE_CONFIG={apiKey:'AIzaSyCUh85u__pabANEfEW01gJcBhRi28j5glA',authDomain:'produtos-gilcana.firebaseapp.com',projectId:'produtos-gilcana',storageBucket:'produtos-gilcana.firebasestorage.app',messagingSenderId:'517281824102',appId:'1:517281824102:web:b32b94de1bd2d189215ca7'};
-const FIREBASE_VAPID='BAISAuGmLHZwgkaKdBOZrPTRGAAfVd38RhZwFSMkrepaLQ4tzCWa9bolZ0p8I9e7VpF2YwSJIAfAkOzpY2ODygw';
-let firebaseMessaging=null;
-async function initPush(){
- if(!account||!('Notification' in window)||!('serviceWorker' in navigator)||!window.firebase)return;
- try{
-  if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
-  firebaseMessaging=firebase.messaging();
-  firebaseMessaging.onMessage(payload=>{const n=payload.notification||{};toast(n.title?`${n.title}: ${n.body||''}`:(payload.data?.body||'Nova notificação.'));loadNotifications();refreshChatUnread();});
-  // Só registra automaticamente quando a conta deseja notificações.
-  // Assim, desligar no app não é desfeito silenciosamente ao reabrir a página.
-  if(Notification.permission==='granted'&&account.notificacoes_ativas!==false)await registerPushToken(false);
- }catch(e){console.error('Push init',e)}
-}
-async function registerPushToken(askPermission=true){
- if(!account)throw new Error('Conta não carregada.');
- if(!('Notification' in window))throw new Error('Este navegador não oferece notificações Web Push.');
- if(!('serviceWorker' in navigator))throw new Error('Este navegador não oferece suporte ao serviço de notificações.');
- try{
-  if(Notification.permission==='denied'){
-   throw new Error('As notificações estão bloqueadas no navegador. Abra as configurações do site/celular, permita Notificações e tente novamente.');
-  }
-  if(askPermission&&Notification.permission==='default'){
-   const p=await Notification.requestPermission();
-   if(p!=='granted')throw new Error(p==='denied'?'As notificações foram bloqueadas. Libere a permissão nas configurações do navegador e tente novamente.':'A permissão de notificações não foi concedida.');
-  }
-  if(Notification.permission!=='granted')throw new Error('Permissão de notificações pendente.');
-  if(!window.firebase)throw new Error('Firebase não carregou. Atualize a página e tente novamente.');
-  if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
-  firebaseMessaging=firebaseMessaging||firebase.messaging();
-  const reg=await navigator.serviceWorker.ready;
-  // getToken recupera o token existente ou cria outro. Isso permite reativar
-  // o aparelho depois de desativá-lo no Supabase.
-  const token=await firebaseMessaging.getToken({vapidKey:FIREBASE_VAPID,serviceWorkerRegistration:reg});
-  if(!token)throw new Error('Não foi possível registrar este aparelho no Firebase.');
-  const {error}=await sb.rpc('registrar_meu_push',{p_token:token,p_plataforma:navigator.userAgent,p_endpoint:location.origin+location.pathname});
-  if(error)throw error;
-  return true;
- }catch(e){console.error('Push register',e);if(askPermission)toast(e.message||'Não foi possível ativar notificações.');return false;}
-}
-
 let account=null, products=[], recommendedProductIds=[], recommendationQty={}, recommendationCursor=0, selected={}, detailProductId=null, detailQuantity=1, cart=JSON.parse(localStorage.getItem('gilcana-cart-v2')||'{}'), activeChatOrder=null, orderRows=[], chatUnreadCount=0, notificationUnreadCount=0;
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
@@ -54,7 +13,7 @@ async function ensureAuth(){let {data:{session}}=await sb.auth.getSession();if(!
 async function getAccount(){const {data,error}=await sb.rpc('minha_conta');if(error)throw error;return data}
 async function boot(){try{await ensureAuth();account=await getAccount();if(account){openApp();await Promise.all([loadCatalog(),loadDeliveryDates(),loadOrders(),loadMessages(),loadNotifications()]);subscribeRealtime()}else showLogin()}catch(e){showLogin(e.message)}}
 function showLogin(msg=''){ $('#loginScreen').style.display='grid';$('#appShell').hidden=true;$('#loginError').textContent=msg}
-function openApp(){ $('#loginScreen').style.display='none';$('#appShell').hidden=false;$('#hello').textContent='OLÁ, '+String(account.nome_acesso||account.nome_empresa||'CLIENTE').toUpperCase();setTimeout(initPush,700)}
+function openApp(){ $('#loginScreen').style.display='none';$('#appShell').hidden=false;$('#hello').textContent='OLÁ, '+String(account.nome_acesso||account.nome_empresa||'CLIENTE').toUpperCase();updateInstallUI()}
 async function activateDevice(){const btn=$('#loginBtn');btn.disabled=true;$('#loginError').textContent='';try{await ensureAuth();const nome=$('#loginName').value.trim(),telefone=normalizePhone($('#loginPhone').value),codigo=$('#loginCode').value.trim();if(!nome||telefone.length<10||codigo.length<4)throw new Error('Preencha nome, WhatsApp e código de acesso.');const {data,error}=await sb.rpc('ativar_aparelho',{p_nome:nome,p_telefone:telefone,p_codigo:codigo});if(error)throw error;account=await getAccount();openApp();await Promise.all([loadCatalog(),loadDeliveryDates(),loadOrders(),loadMessages(),loadNotifications()]);subscribeRealtime();startUnreadPolling();toast('Acesso autorizado.')}catch(e){$('#loginError').textContent=e.message||'Não foi possível entrar.'}finally{btn.disabled=false}}
 async function loadCatalog(){const {data,error}=await sb.from('produtos').select('id,nome,descricao,unidade,quantidade_disponivel,imagem_url').eq('ativo',true).order('nome');if(error)throw error;products=data||[];const {data:recs}=await sb.from('produtos_recomendados').select('produto_id,ordem').eq('ativo',true).order('ordem');recommendedProductIds=(recs||[]).map(r=>r.produto_id).filter(id=>products.some(p=>p.id===id)).slice(0,3);if(!recommendedProductIds.length)recommendedProductIds=products.slice(0,3).map(p=>p.id);renderProducts();renderCart()}
 function renderProducts(){const q=($('#search')?.value||'').toLowerCase();$('#products').innerHTML=products.filter(p=>p.nome.toLowerCase().includes(q)).map(p=>`<article class="product"><div class="pic" onclick="openProductDetail(${p.id})" title="Ver detalhes">${pic(p)}</div><div class="body"><h3 class="product-title-link" onclick="openProductDetail(${p.id})">${esc(p.nome)}</h3><small>${esc(p.unidade)} • ${Number(p.quantidade_disponivel)} disponíveis</small><div class="selector"><button onclick="qty(${p.id},-1)">−</button><b id="q${p.id}">${selected[p.id]||0}</b><button onclick="qty(${p.id},1)">+</button></div><button class="add" onclick="add(${p.id})">Adicionar</button></div></article>`).join('')||'<div class="card">Nenhum produto disponível.</div>'}
@@ -151,49 +110,11 @@ async function loadAccountPage(){
   if(!account)return;
   $('#accountName').textContent=account.nome_empresa||account.nome_cliente||'Cliente';
   $('#accountPhone').textContent='WhatsApp: '+(account.telefone||'');
-  $('#notificationsToggle').checked=account.notificacoes_ativas!==false;
   const {data,error}=await sb.rpc('minha_pessoa_autorizada');
   if(error){$('#authorizedPerson').innerHTML='<p class="muted">Não foi possível carregar.</p>';return}
   const box=$('#authorizedPerson'), form=$('#authorizedForm');
   if(data&&data.id){box.innerHTML=`<div class="authorized-current"><div><b>${esc(data.nome)}</b><small>${esc(data.telefone)}</small></div><button class="danger-outline" onclick="removeAuthorizedPerson()">Remover</button></div>`;form.style.display='none'}
   else{box.innerHTML='';form.style.display='grid'}
-}
-let changingNotifications=false;
-async function setNotifications(enabled){
-  const toggle=$('#notificationsToggle');
-  if(changingNotifications)return;
-  changingNotifications=true;
-  if(toggle)toggle.disabled=true;
-  try{
-    if(enabled){
-      // Primeiro garante permissão + token + registro do aparelho.
-      const ok=await registerPushToken(true);
-      if(!ok){if(toggle)toggle.checked=false;return;}
-      // Só depois marca a preferência da conta como ativa.
-      const {error}=await sb.rpc('definir_minhas_notificacoes',{p_ativas:true});
-      if(error)throw error;
-      account.notificacoes_ativas=true;
-      if(toggle)toggle.checked=true;
-      toast('Notificações ativadas neste aparelho.');
-    }else{
-      // Desativa o envio no servidor, mas NÃO revoga a permissão do navegador.
-      // Assim o usuário consegue ativar novamente pelo próprio botão.
-      const {error}=await sb.rpc('definir_minhas_notificacoes',{p_ativas:false});
-      if(error)throw error;
-      const {error:pushError}=await sb.rpc('desativar_meus_push');
-      if(pushError)throw pushError;
-      account.notificacoes_ativas=false;
-      if(toggle)toggle.checked=false;
-      toast('Notificações desativadas. Você pode ativá-las novamente quando quiser.');
-    }
-  }catch(e){
-    console.error('Alterar notificações',e);
-    if(toggle)toggle.checked=account.notificacoes_ativas!==false;
-    toast(e?.message||'Não foi possível alterar as notificações.');
-  }finally{
-    changingNotifications=false;
-    if(toggle)toggle.disabled=false;
-  }
 }
 async function saveAuthorizedPerson(){
   const nome=$('#authorizedName').value.trim(), telefone=normalizePhone($('#authorizedPhone').value), codigo=$('#authorizedCode').value.trim();
@@ -205,6 +126,25 @@ async function saveAuthorizedPerson(){
 async function removeAuthorizedPerson(){
   if(!confirm('Deseja remover a pessoa autorizada?'))return;
   const {error}=await sb.rpc('remover_minha_pessoa_autorizada');if(error)return toast('Erro: '+error.message);await loadAccountPage();toast('Pessoa autorizada removida.')
+}
+let deferredInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;updateInstallUI()});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;updateInstallUI();toast('Produtos Gilçana instalado.')});
+function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)}
+function updateInstallUI(){
+ const btn=$('#installAppBtn'),help=$('#installHelp');if(!btn||!help)return;
+ if(isStandalone()){btn.style.display='none';help.textContent='Aplicativo instalado neste aparelho.';return}
+ btn.style.display='block';
+ if(isIOS()){btn.textContent='Como instalar no iPhone';help.textContent='No Safari: Compartilhar → Adicionar à Tela de Início.'}
+ else if(deferredInstallPrompt){btn.textContent='Instalar aplicativo';help.textContent='Instalação disponível neste aparelho.'}
+ else{btn.textContent='Como instalar';help.textContent='Abra o menu do navegador e escolha Instalar app ou Adicionar à tela inicial.'}
+}
+async function installApp(){
+ if(isStandalone())return toast('O aplicativo já está instalado.');
+ if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;updateInstallUI();return}
+ if(isIOS())return toast('No Safari, toque em Compartilhar e depois em Adicionar à Tela de Início.');
+ toast('No menu do navegador, escolha Instalar app ou Adicionar à tela inicial.');
 }
 function showPage(id){const isChat=id==='chat';document.documentElement.classList.toggle('chat-lock',isChat);document.body.classList.toggle('chat-open',isChat);document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));$('#cartBar').style.display=id==='shop'?'flex':'none';if(id==='cart')renderCart();if(id==='orders')loadOrders();if(id==='chat')loadMessages();if(id==='accountPage')loadAccountPage();if(id!=='chat')refreshChatUnread();window.scrollTo(0,0)}
 function subscribeRealtime(){sb.channel('gilcana-cliente').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>loadOrders()).on('postgres_changes',{event:'*',schema:'public',table:'mensagens'},()=>{if($('#chat').classList.contains('active'))loadMessages();else refreshChatUnread();loadNotifications()}).on('postgres_changes',{event:'*',schema:'public',table:'notificacoes'},()=>loadNotifications()).on('postgres_changes',{event:'*',schema:'public',table:'produtos'},()=>loadCatalog()).subscribe()}

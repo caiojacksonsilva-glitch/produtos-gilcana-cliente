@@ -1,0 +1,16 @@
+PRODUTOS GILÇANA CLIENTE — V4.0 FINAL
+
+- Novo ícone oficial 1:1 para Android/iPhone.
+- PWA instalável e abertura em modo standalone/tela cheia.
+- Instalação orientada em Minha conta.
+- Web Push/Firebase removido da interface e do service worker.
+- Notificações internas, pedidos e chat continuam intactos.
+- Cache V4.0 renovado; páginas usam atualização pela rede para evitar versão antiga presa.
+- Não requer novo SQL para esta versão.
+
+PUBLICAÇÃO
+1. Envie todo o conteúdo desta pasta para a raiz do repositório produtos-gilcana-cliente.
+2. Faça Commit changes.
+3. Aguarde o GitHub Pages atualizar.
+4. Abra o site uma vez no navegador e recarregue.
+5. Em Minha conta, use Instalar aplicativo / Como instalar.

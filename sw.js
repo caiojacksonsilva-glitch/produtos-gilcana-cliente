@@ -1,10 +1,13 @@
-const CACHE='gilcana-v314-push';
-const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./assets/logo.png','./assets/icon-192.png','./assets/icon-512.png'];
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
-self.addEventListener('activate',e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x))))]))});
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request)))});
-importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
-firebase.initializeApp({apiKey:'AIzaSyCUh85u__pabANEfEW01gJcBhRi28j5glA',authDomain:'produtos-gilcana.firebaseapp.com',projectId:'produtos-gilcana',storageBucket:'produtos-gilcana.firebasestorage.app',messagingSenderId:'517281824102',appId:'1:517281824102:web:b32b94de1bd2d189215ca7'});
-firebase.messaging();
-self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{for(const c of list){if(c.url.includes('/produtos-gilcana-cliente/'))return c.focus()}return clients.openWindow('./')}))});
+const CACHE='gilcana-v400-final';
+const CORE=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./assets/logo.png','./assets/icon-180.png','./assets/icon-192.png','./assets/icon-512.png'];
+self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))});
+self.addEventListener('activate',event=>{event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
+self.addEventListener('fetch',event=>{
+ if(event.request.method!=='GET')return;
+ const req=event.request;
+ if(req.mode==='navigate'){
+  event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{const copy=res.clone();caches.open(CACHE).then(c=>c.put('./index.html',copy));return res}).catch(()=>caches.match('./index.html')));
+  return;
+ }
+ event.respondWith(fetch(req).then(res=>{if(res.ok&&new URL(req.url).origin===location.origin){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy))}return res}).catch(()=>caches.match(req)));
+});
